@@ -1,72 +1,65 @@
 package com.kengo.alarmsetterapp;
 
+import android.app.AlarmManager;
+import android.app.PendingIntent;
+import android.content.Intent;
 import android.os.Bundle;
-import com.google.android.material.snackbar.Snackbar;
-import androidx.appcompat.app.AppCompatActivity;
 import android.view.View;
-import androidx.core.view.WindowCompat;
-import androidx.navigation.NavController;
-import androidx.navigation.Navigation;
-import androidx.navigation.ui.AppBarConfiguration;
-import androidx.navigation.ui.NavigationUI;
-import com.kengo.alarmsetterapp.databinding.ActivityMainBinding;
+import android.widget.TimePicker;
+import android.widget.Toast;
+import android.widget.ToggleButton;
 
-import android.view.Menu;
-import android.view.MenuItem;
+import androidx.appcompat.app.AppCompatActivity;
+
+import java.util.Calendar;
 
 public class MainActivity extends AppCompatActivity {
-
-    private AppBarConfiguration appBarConfiguration;
-private ActivityMainBinding binding;
+    TimePicker alarmTimePicker;
+    PendingIntent pendingIntent;
+    AlarmManager alarmManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
 
-     binding = ActivityMainBinding.inflate(getLayoutInflater());
-     setContentView(binding.getRoot());
+        alarmTimePicker = (TimePicker) findViewById(R.id.timePicker);
+        alarmManager = (AlarmManager) getSystemService(ALARM_SERVICE);
 
-        setSupportActionBar(binding.toolbar);
+    }
 
-        NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_content_main);
-        appBarConfiguration = new AppBarConfiguration.Builder(navController.getGraph()).build();
-        NavigationUI.setupActionBarWithNavController(this, navController, appBarConfiguration);
+    // OnToggleClicked() method is implemented the time functionality
+    public void OnToggleClicked(View view) {
+        long time;
+        if (((ToggleButton) view).isChecked()) {
+            Toast.makeText(MainActivity.this, "ALARM ON", Toast.LENGTH_SHORT).show();
+            Calendar calendar = Calendar.getInstance();
 
-        binding.fab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAnchorView(R.id.fab)
-                        .setAction("Action", null).show();
+            // calendar is called to get current time in hour and minute
+            calendar.set(Calendar.HOUR_OF_DAY, alarmTimePicker.getHour());
+            calendar.set(Calendar.MINUTE, alarmTimePicker.getMinute());
+
+            // using intent i have class AlarmReceiver class which inherits
+            // BroadcastReceiver
+            Intent intent = new Intent(this, AlarmReceiver.class);
+
+            // we call broadcast using pendingIntent
+            pendingIntent = PendingIntent.getBroadcast(this, 0, intent, PendingIntent.FLAG_MUTABLE);
+
+            time = (calendar.getTimeInMillis() - (calendar.getTimeInMillis() % 60000));
+            if (System.currentTimeMillis() > time) {
+                // setting time as AM and PM
+                if (Calendar.AM_PM == 0)
+                    time = time + (1000 * 60 * 60 * 12);
+                else
+                    time = time + (1000 * 60 * 60 * 24);
             }
-        });
-    }
-@Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.menu_main, menu);
-        return true;
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
-
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            return true;
+            // Alarm rings continuously until toggle button is turned off
+            alarmManager.setRepeating(AlarmManager.RTC_WAKEUP, time, 10000, pendingIntent);
+            // alarmManager.set(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + (time * 1000), pendingIntent);
+        } else {
+            alarmManager.cancel(pendingIntent);
+            Toast.makeText(MainActivity.this, "ALARM OFF", Toast.LENGTH_SHORT).show();
         }
-
-        return super.onOptionsItemSelected(item);
-    }
-
-    @Override
-    public boolean onSupportNavigateUp() {
-        NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_content_main);
-        return NavigationUI.navigateUp(navController, appBarConfiguration)
-                || super.onSupportNavigateUp();
     }
 }
